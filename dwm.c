@@ -44,6 +44,8 @@
 #include "drw.h"
 #include "util.h"
 
+#include <math.h>
+
 /* macros */
 #define BUTTONMASK              (ButtonPressMask|ButtonReleaseMask)
 #define CLEANMASK(mask)         (mask & ~(numlockmask|LockMask) & (ShiftMask|ControlMask|Mod1Mask|Mod2Mask|Mod3Mask|Mod4Mask|Mod5Mask))
@@ -92,7 +94,7 @@ struct Client {
 	int basew, baseh, incw, inch, maxw, maxh, minw, minh;
 	int bw, oldbw;
 	unsigned int tags;
-	int isfixed, isfloating, isurgent, neverfocus, oldstate, isfullscreen;
+	int isfixed, isfloating, isurgent, neverfocus, oldstate, isfullscreen, iscornered;
 	Client *next;
 	Client *snext;
 	Monitor *mon;
@@ -139,6 +141,7 @@ typedef struct {
 	unsigned int tags;
 	int isfloating;
 	int monitor;
+	int iscornered;
 } Rule;
 
 /* function declarations */
@@ -234,10 +237,14 @@ static int xerror(Display *dpy, XErrorEvent *ee);
 static int xerrordummy(Display *dpy, XErrorEvent *ee);
 static int xerrorstart(Display *dpy, XErrorEvent *ee);
 static void zoom(const Arg *arg);
+static void gettagcount(void);
+static Client *getclientundermouse(void);
+static void cornerwindow(Client *c);
 
 /* variables */
 static const char broken[] = "broken";
 static char stext[256];
+static int tagcount = 0;
 static int screen;
 static int sw, sh;           /* X display screen geometry width, height */
 static int bh, blw = 0;      /* bar geometry */
@@ -299,6 +306,7 @@ applyrules(Client *c)
 		&& (!r->instance || strstr(instance, r->instance)))
 		{
 			c->isfloating = r->isfloating;
+			c->iscornered = r->iscornered;
 			c->tags |= r->tags;
 			for (m = mons; m && m->num != r->monitor; m = m->next);
 			if (m)
@@ -713,6 +721,8 @@ drawbar(Monitor *m)
 	}
 
 	for (c = m->clients; c; c = c->next) {
+		if (c->tags == tagcount)
+			continue;
 		occ |= c->tags;
 		if (c->isurgent)
 			urg |= c->tags;
@@ -1060,6 +1070,7 @@ manage(Window w, XWindowAttributes *wa)
 	updatewindowtype(c);
 	updatesizehints(c);
 	updatewmhints(c);
+	cornerwindow(c);
 	XSelectInput(dpy, w, EnterWindowMask|FocusChangeMask|PropertyChangeMask|StructureNotifyMask);
 	grabbuttons(c, 0);
 	if (!c->isfloating)
@@ -1077,7 +1088,11 @@ manage(Window w, XWindowAttributes *wa)
 	c->mon->sel = c;
 	arrange(c->mon);
 	XMapWindow(dpy, c->win);
-	focus(NULL);
+
+	if (c->iscornered)
+		focus(getclientundermouse());
+	else
+		focus(NULL);
 }
 
 void
@@ -1513,6 +1528,7 @@ setlayout(const Arg *arg)
 		arrange(selmon);
 	else
 		drawbar(selmon);
+	focus(getclientundermouse());
 }
 
 /* arg > 1.0 will set mfact absolutely */
@@ -1788,6 +1804,7 @@ unmanage(Client *c, int destroyed)
 	focus(NULL);
 	updateclientlist();
 	arrange(m);
+	focus(getclientundermouse());
 }
 
 void
@@ -2048,6 +2065,7 @@ view(const Arg *arg)
 		selmon->tagset[selmon->seltags] = arg->ui & TAGMASK;
 	focus(NULL);
 	arrange(selmon);
+	focus(getclientundermouse());
 }
 
 Client *
@@ -2130,6 +2148,33 @@ zoom(const Arg *arg)
 	pop(c);
 }
 
+void
+gettagcount(void)
+{
+	for (int i = 0; i < LENGTH(tags); i++) 
+		tagcount += pow(2, i);
+}
+
+Client *getclientundermouse(void) {
+	int ret, di;
+  	unsigned int dui;
+  	Window child, dummy;
+
+  	ret = XQueryPointer(dpy, root, &dummy, &child, &di, &di, &di, &di, &dui);
+
+  	if (!ret) 
+  	  return NULL;
+
+	return wintoclient(child);
+}
+
+void cornerwindow(Client *c) {
+	if (c->iscornered) {
+  	  c->x = c->mon->mx + (c->mon->mw - WIDTH(c));
+  	  c->y = c->mon->my + (c->mon->mh - HEIGHT(c));
+  	}
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -2147,6 +2192,7 @@ main(int argc, char *argv[])
 	if (pledge("stdio rpath proc exec", NULL) == -1)
 		die("pledge");
 #endif /* __OpenBSD__ */
+	gettagcount();
 	scan();
 	run();
 	cleanup();
