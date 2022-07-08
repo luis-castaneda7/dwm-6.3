@@ -27,8 +27,12 @@ static const Rule rules[] = {
 	 *	WM_CLASS(STRING) = instance, class
 	 *	WM_NAME(STRING) = title
 	 */
-	/* class      instance    title       tags mask     isfloating   monitor 	iscornered*/
-	{ "feh",      NULL,       NULL,       ~0,           1,           -1,		1 },
+	/* class          instance    title         tags mask     isfloating   monitor 	iscornered*/
+	{ "feh",             NULL,       NULL,         ~0,           1,           -1,		1 },
+	{ "Opera",           NULL,       NULL,          1,           0,           -1,		0 },
+	{ "code",            NULL,       NULL,       1<<2,           0,           -1,		0 },
+	{ "discord",         NULL,       NULL,       1<<2,           0,           -1,		0 },
+	{ "obsidian",        NULL,       NULL,       1<<3,           0,           -1,		0 },
 };
 
 /* layout(s) */
