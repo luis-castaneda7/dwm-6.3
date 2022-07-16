@@ -1112,7 +1112,7 @@ void monocle(Monitor *m) {
   Client *c;
 
   for (c = m->clients; c; c = c->next)
-    if (ISVISIBLE(c))
+    if (ISVISIBLE(c) && memcmp("feh", c->name, 3))
       n++;
   if (n > 0) /* override layout symbol */
     snprintf(m->ltsymbol, sizeof m->ltsymbol, "[%d]", n);
