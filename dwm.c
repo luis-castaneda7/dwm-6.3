@@ -20,6 +20,9 @@
  *
  * To understand everything else, start reading main().
  */
+
+
+ //this is just a simple test
 #include <X11/Xatom.h>
 #include <X11/Xlib.h>
 #include <X11/Xproto.h>
